@@ -1,0 +1,3 @@
+Hello from mini-cdn!
+This file travelled through HAProxy and one of three FastAPI edges.
+On a cache hit, Redis serves the content without another origin request.

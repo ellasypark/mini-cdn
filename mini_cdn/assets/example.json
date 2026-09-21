@@ -1,0 +1,5 @@
+{
+  "project": "mini-cdn",
+  "purpose": "Learn caching, load balancing, TTLs, and failure handling locally",
+  "edges": 3
+}

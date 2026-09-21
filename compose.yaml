@@ -1,0 +1,89 @@
+name: mini-cdn
+
+x-edge: &edge
+  build: .
+  image: mini-cdn-app:local
+  init: true
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  depends_on:
+    redis:
+      condition: service_healthy
+    origin:
+      condition: service_healthy
+
+x-edge-environment: &edge-environment
+  ORIGIN_URL: http://origin:8000
+  REDIS_URL: redis://redis:6379/0
+  CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-30}
+  ORIGIN_TIMEOUT_SECONDS: ${ORIGIN_TIMEOUT_SECONDS:-5}
+  MAX_ASSET_BYTES: ${MAX_ASSET_BYTES:-2097152}
+
+services:
+  haproxy:
+    image: haproxy:3.2-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${CDN_PORT:-8080}:8080"
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      edge1:
+        condition: service_healthy
+      edge2:
+        condition: service_healthy
+      edge3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  edge1:
+    <<: *edge
+    environment:
+      <<: *edge-environment
+      EDGE_ID: edge-1
+
+  edge2:
+    <<: *edge
+    environment:
+      <<: *edge-environment
+      EDGE_ID: edge-2
+
+  edge3:
+    <<: *edge
+    environment:
+      <<: *edge-environment
+      EDGE_ID: edge-3
+
+  origin:
+    build: .
+    image: mini-cdn-app:local
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    command: ["uvicorn", "mini_cdn.origin:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
