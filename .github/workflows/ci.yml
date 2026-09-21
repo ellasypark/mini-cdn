@@ -14,11 +14,11 @@ concurrency:
 
 jobs:
   test-lint-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -30,12 +30,12 @@ jobs:
       - run: python -m build --no-isolation
 
   compose-integration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       CACHE_TTL_SECONDS: "3"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - run: docker compose config --quiet
       - run: docker compose up --build --wait --wait-timeout 180
       - run: python3 scripts/smoke.py --check-expiry
